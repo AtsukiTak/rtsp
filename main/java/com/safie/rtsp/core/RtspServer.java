@@ -15,35 +15,42 @@ import org.apache.logging.log4j.LogManager;
 
 import com.safie.rtp.session.*;
 
-// サーバの概念クラス
-// 以下の責務を負う
-// ・リクエスト通知を受け取り、レスポンスを返す(レスポンスの組み立てなどは責任外）
-// ・サーバーの基本情報を保持する
+// RTSPの中核をなすクラス
+// レシーバーやハンドラなどのコントローラを持つr。
 
 public class RtspServer {
     private static Logger logger = LogManager.getLogger(RtspServer.class);
-    private String ip;
-    private int port;
-    private RtspRequestHandler handler;
-    private RtspRequestReceiver receiver;
-//    private RtspParticipantDatabase database;
+
+    private final RtspConfig config;
+    private final RtspRequestHandler handler;
+    private final RtspRequestReceiver receiver;
+    private final RtspParticipantDatabase database;
 
     private static final int BIZGROUPSIZE = Runtime.getRuntime().availableProcessors() * 2;
     private static final int BIZTHREADSIZE = 4;
     private static final EventLoopGroup bossGroup = new NioEventLoopGroup(BIZGROUPSIZE);
     private static final EventLoopGroup workerGroup = new NioEventLoopGroup(BIZTHREADSIZE);
 
-    public RtspServer(String ip, int port, RtpSession session, RtcpSession rtcpSession) {
-        this.ip = ip;
-        this.port = port;
-        this.handler = new RtspRequestHandler(ip, port, session, rtcpSession);
+    public RtspServer(RtspConfig config) {
+        this.config = config;
+        this.handler = new RtspRequestHandler(){
+            @Override
+            public RtspSession initSession(int sessionId){
+                RtspSession session = new RtspSession(sessionId, config);
+                database.add(session);
+                return session;
+            }
+
+            @Override
+            public RtspSession getSessionById(int id){
+                return database.findSession(id);
+            }
+        };
         
         this.receiver = new RtspRequestReceiver(){
             @Override
             public void requestReceived(HttpRequest request, ChannelHandlerContext ctx){
-                for (HttpMessage msg : handler.handleRtspRequest(request)){
-                    ctx.writeAndFlush(msg);
-                }
+                handler.receiveRequest(request, ctx);
             }
         };
     }
@@ -63,15 +70,16 @@ public class RtspServer {
         }
     }
 
+    // TODO ------------------------------
     public void stop() {
 
     }
 
     public String getAddress() {
-        return this.ip;
+        return this.config.ip;
     }
 
     public int getPort() {
-        return this.port;
+        return this.config.port;
     }
 }

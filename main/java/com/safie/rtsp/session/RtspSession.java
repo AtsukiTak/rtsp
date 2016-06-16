@@ -9,22 +9,26 @@ public class RtspSession {
 
     private Logger logger = LogManager.getLogger(RtspSession.class);
 
-    private String id;
-    private String transport;
+    public String id;
+    public RtpPlayer rtpPlayer;
+    protected RtpServer rtpServer;
+    protected RtpSession rtpSession;
+    // TODO rtcpの実装
+    protected InetSocketAddress clientRtcpAddress;
 
-    public RtspSession(String id){
+    public RtspSession(String id, RtspConfig config){
         this.id = id;
+        this.rtpPlayer = RtpPlayer.newPlayer(config);
     }
 
-    public String getId() {
-        return this.id;
+    public void setClientRtpAddress(InetSocketAddress address){
+        this.rtpServer = RtpSessionManager.build(address);
+        this.rtpSession = rtpServer.session;
+        this.player.setSession(this.rtpSession);
     }
 
-    public void setTransport(String transport){
-        this.transport = transport;
+    public void setClientRtcpAddress(InetSocketAddress address){
+        this.clientRtcpAddress = address;
     }
 
-    public void destroy(){
-        logger.debug("session which id is "+id.toString()+" is destoroied");
-    }
 }

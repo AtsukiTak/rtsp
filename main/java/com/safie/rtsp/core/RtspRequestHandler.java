@@ -19,164 +19,152 @@ import java.util.concurrent.Callable;
 
 import com.safie.rtp.session.*;
 
-public class RtspRequestHandler { 
+public abstract class RtspRequestHandler { 
     private static Logger logger = LogManager.getLogger(RtspRequestHandler.class);
 
-    private String ip;
-    private int port;
-    private RtpSession rtpSession;
-    private RtcpSession rtcpSession;
-
-    protected RtspRequestHandler(String ip, int port, RtpSession rtpSession, RtcpSession rtcpSession) {
-        this.ip = ip;
-        this.port = port;
-        this.rtpSession = rtpSession;
-        this.rtcpSession = rtcpSession;
+    protected RtspRequestHandler() {
     } 
 
+    public abstract RtspSession getSessionBySsrc(int ssrc);
+
     // request内容を処理するメソッド
-    public List<HttpMessage> handleRtspRequest(HttpRequest request) {
+    public void handleRtspRequest(HttpRequest request, ChannelHandlerContext ctx) {
         try {
             if (request.getMethod().equals(RtspMethods.SETUP)) {
-                return onSetupRequest(request, rtpSession, rtcpSession);
+                onSetupRequest(request, ctx);
             } else if (request.getMethod().equals(RtspMethods.DESCRIBE)){
-                return onDescribeRequest(request);
+                onDescribeRequest(request, ctx);
             } else if (request.getMethod().equals(RtspMethods.PLAY)) {
-                return onPlayRequest(request);
+                onPlayRequest(request, ctx);
             } else if (request.getMethod().equals(RtspMethods.PAUSE)) {
-                return onPauseRequest(request);
+                onPauseRequest(request, ctx);
             } else if (request.getMethod().equals(RtspMethods.GET_PARAMETER)) {
-                return onGetParameterRequest(request);
+                onGetParameterRequest(request, ctx);
             } else if (request.getMethod().equals(RtspMethods.TEARDOWN)) {
-                return onTeardownRequest(request);
+                onTeardownRequest(request, ctx);
             } else if (request.getMethod().equals(RtspMethods.OPTIONS)) {
-                return onOptionRequest(request);
+                onOptionRequest(request, ctx);
             } else {
                 logger.error("Unsupported request method : "+ request.getMethod());
-                return new ArrayList();
             }
         } catch (Exception e) {
             logger.error("Unexpected error during processing,Caused by ", e);
-            return new ArrayList();
         }
     }
 
-    private List<HttpMessage> onSetupRequest(HttpRequest request, RtpSession rtpSession, RtcpSession rtcpSession) {
+    private void onSetupRequest(HttpRequest request, ChannelHandlerContext ctx) {
         try {
-            Callable<HttpResponse> action = new SetupAction(request, rtpSession, rtcpSession);
-            HttpResponse setupResponse = action.call();
+            RtspSetupResponse action = new RtspSetupResponse(request);
+
+            //新しいsessionの作成
+            int sessionId = action.sessionId;
+            RtspSession session = initSession(sessionId);
+
+            // client port の設定
+            int rtpPort = action.rtpPort;
+            int rtcpPort = action.rtcpPort;
+            session.setClientRtpPort(rtpPort);
+            session.setClientRtcpPort(rtcpPort);
+
+            HttpResponse setupResponse = action.response;
 
             logger.debug("setup response header =====> \n" + setupResponse);
-            List<HttpMessage> list = new ArrayList();
-            list.add(setupResponse);
-            return list;
+            ctx.writeAndFlush(setupResponse);
         } catch (Exception e) {
             logger.error("Setup Request Handle Error.........", e);
-            return new ArrayList();
         }
     }
 
-    private List<HttpMessage> onDescribeRequest(HttpRequest request) {
+    private void onDescribeRequest(HttpRequest request, ChannelHandlerContext ctx) {
         try {
-            Callable<HttpResponse> action = new DescribeAction(request, this.ip, this.port);
-            FullHttpResponse describeResponse = (FullHttpResponse) action.call();
+            RtspDescribeResponse action = new RtspDescribeResponse(request);
+            FullHttpResponse describeResponse = (FullHttpResponse) action.response;
 
             logger.debug("describe response header ====> \n" + describeResponse);
             logger.debug("describe response content =====> \n"
                     + describeResponse.content().toString(CharsetUtil.UTF_8));
-            List<HttpMessage> list = new ArrayList();
-            list.add(describeResponse);
-            return list;
+
+            ctx.writeAndFlush(describeResponse);
         }catch (Exception e) {
             logger.error("Describe request handle error.........", e);
-            return new ArrayList();
         }
     }
 
-    private List<HttpMessage> onPlayRequest(HttpRequest request) {
+    private void onPlayRequest(HttpRequest request, ChannelHandlerContext ctx) {
         try {
-            // play rtp
-            RtpSessionManager manager = new RtpSessionManager(this.rtpSession, this.rtcpSession);
-            manager.build();
+            RtspPlayResponse action = new RtspPlayResponse(request);
+
+            RtspSession session = getSessionById(action.sessionId);
+            session.rtpPlayer.play();
 
             // return response
-            Callable<HttpResponse> action = new PlayAction(request);
-            HttpResponse playResponse = action.call();
+            HttpResponse playResponse = action.response;
+            ctx.writeAndFlush(playResponse);
+
             logger.debug("play response =====> \n" + playResponse);
-            List<HttpMessage> list = new ArrayList();
-            list.add(playResponse);
-            return list;
         } catch (Exception e) {
             logger.error("Play Request Handle Error.........", e);
-            return new ArrayList();
         }
     }
 
-    private List<HttpMessage> onPauseRequest(HttpRequest request) {
+    private void onPauseRequest(HttpRequest request, ChannelHandlerContext ctx) {
         try {
-            Callable<HttpResponse> responseAction = new PauseAction(request);
-            HttpResponse pauseResponse = responseAction.call();
+            RtspPauseResponse responseAction = new RtspPauseResponse(request);
+            
+            RtspSession session = getSessionById(action.sessionId);
+            session.rtpPlayer.pause();
+
+            HttpResponse pauseResponse = responseAction.response;
+            ctx.writeAndFlush(pauseResponse);
+
             logger.debug("pause response header =====> \n" + pauseResponse);
 
-            Callable<HttpRequest> announceAction = new AnnounceAction(request);
-            HttpRequest announceRequest = announceAction.call();
-            logger.debug("announce request =====> \n" + announceRequest);
+            // TODO what is doing here
+            //Callable<HttpRequest> announceAction = new AnnounceAction(request);
+            //HttpRequest announceRequest = announceAction.call();
+            //logger.debug("announce request =====> \n" + announceRequest);
 
-            List<HttpMessage> list = new ArrayList();
-            list.add(pauseResponse);
-            list.add(announceRequest);
-            return list;
         } catch (Exception e) {
             logger.error("Pause Request Handle Error.........", e);
-            return new ArrayList();
         }
 
     }
 
-    private List<HttpMessage> onGetParameterRequest(HttpRequest request) {
+    private void onGetParameterRequest(HttpRequest request, ChannelHandlerContext ctx) {
         try {
-            Callable<HttpResponse> action = new GetParameterAction(request);
-            HttpResponse response = action.call();
+            RtspGetparameterResponse action = new RtspGetparameterResponse(request);
+            HttpResponse response = action.response;
             logger.debug("get_parameter response =====> \n" + response);
 
-            List<HttpMessage> list = new ArrayList();
-            list.add(response);
-            return list;
+            ctx.writeAndFlush(response);
         } catch (Exception e) {
             logger.error("get_parameter Request Handle Error.........", e);
-            return new ArrayList();
         }
     }
 
-    private List<HttpMessage> onTeardownRequest(HttpRequest request) {
+    private void onTeardownRequest(HttpRequest request, ChannelHandlerContext ctx) {
         try {
-            Callable<HttpResponse> action = new TeardownAction(request);
-            HttpResponse response = action.call();
+            RtspTeardownResponse action = new RtspTeardownResponse(request);
+            HttpResponse response = action.response;
             logger.debug("teardown response =====> \n" + response);
 
-            List<HttpMessage> list = new ArrayList();
-            list.add(response);
-            return list;
+            ctx.writeAndFlush(respnse);
         } catch (Exception e) {
             logger.error("teardown Request Handle Error.........", e);
-            return new ArrayList();
         }
     }
 
 
-    private List<HttpMessage> onOptionRequest(HttpRequest request) {
+    private void onOptionRequest(HttpRequest request, ChannelHandlerContext ctx) {
         try {
-            Callable<HttpResponse> action = new OptionsAction(request);
-            HttpResponse setupResponse = (HttpResponse) action.call();
+            RtspOptionsResponse action = new RtspOptionsResponse(request);
+            HttpResponse setupResponse = action.response;
 
             logger.debug("options response header =====> \n" + setupResponse);
 
-            List<HttpMessage> list = new ArrayList();
-            list.add(setupResponse);
-            return list;
+            ctx.writeAndFlush(setupResponse);
         } catch (Exception e) {
             logger.error("Options Request Handle Error.........", e);
-            return new ArrayList();
         }
     }
 
