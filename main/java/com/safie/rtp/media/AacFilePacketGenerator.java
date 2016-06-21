@@ -11,7 +11,7 @@ import org.apache.logging.log4j.Logger;
 
 import javax.sound.sampled.AudioInputStream;
 
-public class AudioFilePacketGenerator extends PacketGenerator {
+public class AacFilePacketGenerator extends PacketGenerator {
 
     private Logger logger = LogManager.getLogger(AudioFilePacketGenerator.class.getName());
 
@@ -22,52 +22,37 @@ public class AudioFilePacketGenerator extends PacketGenerator {
     private Audio audio;
     private int bufferSize;
     
-    public AudioFilePacketGenerator (long ssrc, Audio audio){
+    public AacFilePacketGenerator (long ssrc, Audio audio){
         this.ssrc = ssrc;
         this.audio = audio;
         this.timestamp = this.timestampOffset;
         this.bufferSize = MAX_EXTERNAL_BUFFER_SIZE / this.audio.getFrameSize() * this.audio.getFrameSize();
     }
 
-
-    private void newPacketIsGenerated(DataPacket packet){
-        if(this.generatedListener != null){
-            this.generatedListener.whenGenerated(packet);
-        }
+    @Override
+    public boolean hasNext(){
+        audio.strea.available() >= this.audio.getFrameSize();
     }
 
     @Override
-    public void start(){
-        logger.info("start to generate packet");
-        while (true){
-            DataPacket packet = generateFromInputStream(audio.stream);
-            if (packet == null) {
-                logger.info("finish to generate packet");
-                break;
-            }
-            newPacketIsGenerated(packet);
-
-            try{
-                Thread.sleep(0);
-            }catch(java.lang.InterruptedException e){
-                logger.error(e);
-            }
-        }
+    public DataPacket nextPacket(){
+         return generateFromInputStream(audio.stream);
     }
 
+    //FIXME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     private DataPacket generateFromInputStream(AudioInputStream stream){
         byte[] data = new byte[bufferSize];
         try{
             int readBytes = stream.read(data, 0, bufferSize);
-            if (readBytes == -1) {
+            if (readBytes < this.audio.getFrameSize()) {
                 logger.info("finish to read stream");
                 return null;
             }
             int countOfFrame = readBytes / audio.getFrameSize();
-            long timestampInc = (long)((double)audio.getClockRate() / (double)audio.getFrameRate() * (double)countOfFrame);
+            long timestampInc = (long)((double)audio.getClockRate() / audio.getFrameRate() * countOfFrame);
             this.timestamp += timestampInc;
 
-            ByteBuf bytebuf = Unpooled.buffer(bufferSize+4);
+            ByteBuf bytebuf = Unpooled.buffer(bufferSize);
             bytebuf.writeBytes(data);
             DataPacket packet = new DataPacket(bytebuf, ssrc, audio.getPayloadType(), timestamp);
             logger.debug("packet is generated !!");

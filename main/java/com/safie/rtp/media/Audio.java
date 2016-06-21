@@ -55,6 +55,7 @@ public class Audio implements Media {
                 this.encodeName = "PCMU";
                 logger.debug("generate PCMU Audio : "+file.toString());
                 break;
+            case AAC:
             default:
                 logger.error("invalid audio format : "+ this.audioFormat);
                 throw new IOException("invalid audio format");

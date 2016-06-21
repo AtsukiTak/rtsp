@@ -12,18 +12,15 @@ abstract public class PacketGenerator {
 
     private Logger logger = LogManager.getLogger(PacketGenerator.class.getName());
 
-    protected MediaGeneratedListener generatedListener;
     protected long timestampOffset;
 
     public PacketGenerator(){
-        Random r = new Random();
-        this.timestampOffset = (long)r.nextInt() + (long)Integer.MAX_VALUE / 2;
+        this.timestampOffset = new Random().nextLong();
     }
 
-    public void setGeneratedListener(MediaGeneratedListener listener){
-        this.generatedListener = listener;
-    }
+    public abstract boolean hasNext();
 
-    public abstract void start();
+    public abstract DataPacket nextPacket();
 
+    public abstract void moveHead();
 }

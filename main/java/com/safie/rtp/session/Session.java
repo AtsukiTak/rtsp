@@ -27,11 +27,8 @@ public abstract class Session <P extends Packet>{
     // internal vars
     protected AtomicBoolean running;
 
-    public final RtpServer server;
-
-    public Session (RtpServer server) {
+    public Session () {
         this.running = new AtomicBoolean(false);
-        this.server = server;
     }
 
 

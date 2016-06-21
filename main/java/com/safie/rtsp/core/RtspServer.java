@@ -16,7 +16,7 @@ import org.apache.logging.log4j.LogManager;
 import com.safie.rtp.session.*;
 
 // RTSPの中核をなすクラス
-// レシーバーやハンドラなどのコントローラを持つr。
+// レシーバーやハンドラなどのコントローラを持つ。
 
 public class RtspServer {
     private static Logger logger = LogManager.getLogger(RtspServer.class);
@@ -33,6 +33,16 @@ public class RtspServer {
 
     public RtspServer(RtspConfig config) {
         this.config = config;
+        
+        this.receiver = new RtspRequestReceiver(){
+            @Override
+            public void requestReceived(HttpRequest request, ChannelHandlerContext ctx){
+                handler.receiveRequest(request, (response) ->{
+                    ctx.writeAndFlush(response);
+                });
+            }
+        };
+
         this.handler = new RtspRequestHandler(){
             @Override
             public RtspSession initSession(int sessionId){
@@ -42,17 +52,11 @@ public class RtspServer {
             }
 
             @Override
-            public RtspSession getSessionById(int id){
-                return database.findSession(id);
+            public RtspSession getSession(int id){
+                return database.get(id);
             }
         };
         
-        this.receiver = new RtspRequestReceiver(){
-            @Override
-            public void requestReceived(HttpRequest request, ChannelHandlerContext ctx){
-                handler.receiveRequest(request, ctx);
-            }
-        };
     }
 
     // Nettyの実装。childHandlerに独自のイニシャライザを設定。他はいつも通り。

@@ -12,7 +12,7 @@ public class SessionDatabase{
 
     private Logger logger = LogManager.getLogger(SessionDatabase.class);
 
-    private Map<String, RtspSession> map;
+    private Map<int, RtspSession> map;
 
     public SessionDatabase(){
         this.map = ExpiringMap.builder()
@@ -28,15 +28,15 @@ public class SessionDatabase{
 
     }
 
-    public RtspSession get(String key){
+    public RtspSession get(int key){
         return this.map.get(key);
     }
 
-    public void put(RtspSession session, String key){
+    public void put(int key, RtspSession session){
         this.map.put(key, session);
     }
 
-    private void expired(String key, RtspSession session){
+    private void expired(int key, RtspSession session){
         session.destroy();
     }
 }

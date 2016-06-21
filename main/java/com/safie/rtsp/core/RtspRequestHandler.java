@@ -22,28 +22,25 @@ import com.safie.rtp.session.*;
 public abstract class RtspRequestHandler { 
     private static Logger logger = LogManager.getLogger(RtspRequestHandler.class);
 
-    protected RtspRequestHandler() {
-    } 
-
-    public abstract RtspSession getSessionBySsrc(int ssrc);
+    public abstract RtspSession getSession(int id);
 
     // request内容を処理するメソッド
-    public void handleRtspRequest(HttpRequest request, ChannelHandlerContext ctx) {
+    public void handleRtspRequest(HttpRequest request, Consumer<HttpResponse> sender) {
         try {
             if (request.getMethod().equals(RtspMethods.SETUP)) {
-                onSetupRequest(request, ctx);
+                onSetupRequest(request);
             } else if (request.getMethod().equals(RtspMethods.DESCRIBE)){
-                onDescribeRequest(request, ctx);
+                onDescribeRequest(request, sender);
             } else if (request.getMethod().equals(RtspMethods.PLAY)) {
-                onPlayRequest(request, ctx);
+                onPlayRequest(request, sender);
             } else if (request.getMethod().equals(RtspMethods.PAUSE)) {
-                onPauseRequest(request, ctx);
+                onPauseRequest(request, sender);
             } else if (request.getMethod().equals(RtspMethods.GET_PARAMETER)) {
-                onGetParameterRequest(request, ctx);
+                onGetParameterRequest(request, sender);
             } else if (request.getMethod().equals(RtspMethods.TEARDOWN)) {
-                onTeardownRequest(request, ctx);
+                onTeardownRequest(request, sender);
             } else if (request.getMethod().equals(RtspMethods.OPTIONS)) {
-                onOptionRequest(request, ctx);
+                onOptionRequest(request, sender);
             } else {
                 logger.error("Unsupported request method : "+ request.getMethod());
             }
@@ -52,7 +49,7 @@ public abstract class RtspRequestHandler {
         }
     }
 
-    private void onSetupRequest(HttpRequest request, ChannelHandlerContext ctx) {
+    private void onSetupRequest(HttpRequest request, Comsumer<HttpResponse> sender) {
         try {
             RtspSetupResponse action = new RtspSetupResponse(request);
 
@@ -69,13 +66,13 @@ public abstract class RtspRequestHandler {
             HttpResponse setupResponse = action.response;
 
             logger.debug("setup response header =====> \n" + setupResponse);
-            ctx.writeAndFlush(setupResponse);
+            sender.accept(setupResponse);
         } catch (Exception e) {
             logger.error("Setup Request Handle Error.........", e);
         }
     }
 
-    private void onDescribeRequest(HttpRequest request, ChannelHandlerContext ctx) {
+    private void onDescribeRequest(HttpRequest request, Comsumer<HttpResponse> sender) {
         try {
             RtspDescribeResponse action = new RtspDescribeResponse(request);
             FullHttpResponse describeResponse = (FullHttpResponse) action.response;
@@ -84,13 +81,13 @@ public abstract class RtspRequestHandler {
             logger.debug("describe response content =====> \n"
                     + describeResponse.content().toString(CharsetUtil.UTF_8));
 
-            ctx.writeAndFlush(describeResponse);
+            sender.accept(describeResponse);
         }catch (Exception e) {
             logger.error("Describe request handle error.........", e);
         }
     }
 
-    private void onPlayRequest(HttpRequest request, ChannelHandlerContext ctx) {
+    private void onPlayRequest(HttpRequest request, Comsumer<HttpResponse> sender) {
         try {
             RtspPlayResponse action = new RtspPlayResponse(request);
 
@@ -99,7 +96,7 @@ public abstract class RtspRequestHandler {
 
             // return response
             HttpResponse playResponse = action.response;
-            ctx.writeAndFlush(playResponse);
+            sender.accept(playResponse);
 
             logger.debug("play response =====> \n" + playResponse);
         } catch (Exception e) {
@@ -107,7 +104,7 @@ public abstract class RtspRequestHandler {
         }
     }
 
-    private void onPauseRequest(HttpRequest request, ChannelHandlerContext ctx) {
+    private void onPauseRequest(HttpRequest request, Comsumer<HttpResponse> sender) {
         try {
             RtspPauseResponse responseAction = new RtspPauseResponse(request);
             
@@ -115,7 +112,7 @@ public abstract class RtspRequestHandler {
             session.rtpPlayer.pause();
 
             HttpResponse pauseResponse = responseAction.response;
-            ctx.writeAndFlush(pauseResponse);
+            sender.accept(pauseResponse);
 
             logger.debug("pause response header =====> \n" + pauseResponse);
 
@@ -130,39 +127,39 @@ public abstract class RtspRequestHandler {
 
     }
 
-    private void onGetParameterRequest(HttpRequest request, ChannelHandlerContext ctx) {
+    private void onGetParameterRequest(HttpRequest request, Comsumer<HttpResponse> sender) {
         try {
             RtspGetparameterResponse action = new RtspGetparameterResponse(request);
             HttpResponse response = action.response;
             logger.debug("get_parameter response =====> \n" + response);
 
-            ctx.writeAndFlush(response);
+            sender.accept(response);
         } catch (Exception e) {
             logger.error("get_parameter Request Handle Error.........", e);
         }
     }
 
-    private void onTeardownRequest(HttpRequest request, ChannelHandlerContext ctx) {
+    private void onTeardownRequest(HttpRequest request, Comsumer<HttpResponse> sender) {
         try {
             RtspTeardownResponse action = new RtspTeardownResponse(request);
             HttpResponse response = action.response;
             logger.debug("teardown response =====> \n" + response);
 
-            ctx.writeAndFlush(respnse);
+            sender.accept(respnse);
         } catch (Exception e) {
             logger.error("teardown Request Handle Error.........", e);
         }
     }
 
 
-    private void onOptionRequest(HttpRequest request, ChannelHandlerContext ctx) {
+    private void onOptionRequest(HttpRequest request, Comsumer<HttpResponse> sender) {
         try {
             RtspOptionsResponse action = new RtspOptionsResponse(request);
             HttpResponse setupResponse = action.response;
 
             logger.debug("options response header =====> \n" + setupResponse);
 
-            ctx.writeAndFlush(setupResponse);
+            sender.accept(setupResponse);
         } catch (Exception e) {
             logger.error("Options Request Handle Error.........", e);
         }

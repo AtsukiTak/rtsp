@@ -9,26 +9,50 @@ public class RtspSession {
 
     private Logger logger = LogManager.getLogger(RtspSession.class);
 
-    public String id;
+    public int id;
     public RtpPlayer rtpPlayer;
-    protected RtpServer rtpServer;
+    public RtpServer rtpServer;
     protected RtpSession rtpSession;
     // TODO rtcpの実装
     protected InetSocketAddress clientRtcpAddress;
 
     public RtspSession(String id, RtspConfig config){
         this.id = id;
-        this.rtpPlayer = RtpPlayer.newPlayer(config);
+        this.rtpSession = new RtpSession();
+
+        this.rtpServer = new RtpServer(){
+            @Override
+            public void connected(){
+                rtpSession.setSender((packet) -> {
+                    rtpServer.send(packet);
+                });
+            }
+        }
+
+        this.rtpPlayer = RtpPlayerFactory.generate(config);
+        this.rtpPlayer.setSender((packet) -> {
+            this.rtpSession.sendPacket(packet);
+        });
     }
 
     public void setClientRtpAddress(InetSocketAddress address){
-        this.rtpServer = RtpSessionManager.build(address);
-        this.rtpSession = rtpServer.session;
-        this.player.setSession(this.rtpSession);
+        this.rtpServer.setClientAddress(address);
+    }
+
+    public void runRtpServer(){
+        this.rtpServer.run();
     }
 
     public void setClientRtcpAddress(InetSocketAddress address){
         this.clientRtcpAddress = address;
+    }
+
+    public void setSsrc(int ssrc){
+        this.rtpSession.setSsrc(ssrc);
+    }
+
+    public void destory(){
+        this.rtpSession.destory();
     }
 
 }

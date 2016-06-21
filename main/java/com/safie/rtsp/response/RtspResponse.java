@@ -18,22 +18,10 @@ import org.apache.logging.log4j.LogManager;
 
 import com.safie.rtsp.core.RtspController;
 
-class Action implements Callable<HttpResponse> {
+public class RtspResponse{
   private Logger logger = LogManager.getLogger(Action.class);
 
-  protected HttpRequest request;
-
-  public Action(HttpRequest request) {
-    this.request = request;
-  }
-
-  @Override
-  public HttpResponse call() throws Exception {
-    return internalServerErrorWithoutCseq();
-  }
-
-
-  protected String checkCseq(){
+  static public String checkCseq(HttpRequest request){
     String cseq = request.headers().get(Names.CSEQ);
     if (null == cseq || "".equals(cseq)) {
       logger.error("cesq is null.........");
@@ -43,7 +31,7 @@ class Action implements Callable<HttpResponse> {
     }
   }
 
-  protected String getRequire(){
+  static public String getRequire(HttpRequest request){
     String require = request.headers().get(Names.REQUIRE);
     if (null == require || "".equals(require)
         || (!require.equals(RtspController.REQUIRE_VALUE_NGOD_R2))) {
@@ -53,8 +41,8 @@ class Action implements Callable<HttpResponse> {
     }
   }
 
-  protected boolean checkRequire(){
-      String require = getRequire();
+  static public boolean checkRequire(HttpRequest request){
+      String require = getRequire(request);
       if (require == null) return true;
       else{
           logger.error("option not supported : "+ getRequire());
@@ -64,7 +52,7 @@ class Action implements Callable<HttpResponse> {
   }
 
 
-  protected HttpResponse internalServerErrorWithoutCseq(){
+  static public HttpResponse internalServerErrorWithoutCseq(HttpRequest request){
     HttpResponse response =
         new DefaultFullHttpResponse(RtspVersions.RTSP_1_0,
             RtspResponseStatuses.INTERNAL_SERVER_ERROR);
@@ -74,7 +62,7 @@ class Action implements Callable<HttpResponse> {
   }
 
 
-  protected HttpResponse internalServerErrorWithCseq(){
+  static public HttpResponse internalServerErrorWithCseq(HttpRequest request){
     HttpResponse response =
         new DefaultFullHttpResponse(RtspVersions.RTSP_1_0,
             RtspResponseStatuses.INTERNAL_SERVER_ERROR);
@@ -85,7 +73,7 @@ class Action implements Callable<HttpResponse> {
     return response;
   }
 
-  protected HttpResponse optionNotSupported(){
+  static public HttpResponse optionNotSupported(HttpRequest request){
       HttpResponse response = new DefaultFullHttpResponse(RtspVersions.RTSP_1_0,
               RtspResponseStatuses.OPTION_NOT_SUPPORTED);
       response.headers().set(HttpHeaders.Names.SERVER, RtspController.SERVER);
@@ -97,7 +85,7 @@ class Action implements Callable<HttpResponse> {
   }
 
 
-  protected HttpResponse badRequestResponse(){
+  static public HttpResponse badRequestResponse(HttpRequest request){
     HttpResponse response = new DefaultHttpResponse(RtspVersions.RTSP_1_0, RtspResponseStatuses.BAD_REQUEST);
     response.headers().set(Names.SERVER, RtspController.SERVER);
     response.headers().set(Names.CSEQ, request.headers().get(Names.CSEQ));

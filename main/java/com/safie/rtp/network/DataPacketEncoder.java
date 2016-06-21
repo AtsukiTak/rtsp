@@ -20,6 +20,6 @@ public class DataPacketEncoder extends MessageToByteEncoder<DataPacket> {
             return;
         }
         out.writeBytes(packet.encode());
-        this.logger.debug("sending data packet...");
+        this.logger.debug("encoding data packet...");
     }
 }

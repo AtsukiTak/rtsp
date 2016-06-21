@@ -15,15 +15,15 @@ import java.util.concurrent.Callable;
 
 import com.safie.rtsp.core.RtspController;
 
-public class DescribeAction extends Action {
+public class RtspDescribeResponse extends Action {
 
     private final String ip;
     private final int port;
 
-    public DescribeAction(HttpRequest request, String ip, int port) {
+    public FullHttpResponse response;
+
+    public DescribeAction(HttpRequest request) {
         super(request);
-        this.ip = ip;
-        this.port = port;
     }
 
     @Override
