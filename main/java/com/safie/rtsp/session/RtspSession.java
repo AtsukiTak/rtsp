@@ -9,22 +9,51 @@ public class RtspSession {
 
     private Logger logger = LogManager.getLogger(RtspSession.class);
 
-    private String id;
-    private String transport;
+    public int id;
+    public RtpPlayer rtpPlayer;
+    public RtpServer rtpServer;
+    protected RtpSession rtpSession;
+    // TODO rtcpの実装
+    protected InetSocketAddress clientRtcpAddress;
+    protected RtcpServer rtcpServer;
 
-    public RtspSession(String id){
+    public RtspSession(String id, RtspConfig config){
         this.id = id;
+        this.rtpSession = new RtpSession();
+
+        this.rtpServer = new RtpServer(){
+            @Override
+            public void connected(){
+                rtpSession.setSender((packet) -> {
+                    rtpServer.send(packet);
+                });
+            }
+        }
+
+        this.rtpPlayer = RtpPlayerFactory.generate(config);
+        this.rtpPlayer.setSender((packet) -> {
+            this.rtpSession.sendPacket(packet);
+        });
     }
 
-    public String getId() {
-        return this.id;
+    public void setClientRtpAddress(InetSocketAddress address){
+        this.rtpServer.setClientAddress(address);
     }
 
-    public void setTransport(String transport){
-        this.transport = transport;
+    public void runRtpServer(){
+        this.rtpServer.run();
     }
 
-    public void destroy(){
-        logger.debug("session which id is "+id.toString()+" is destoroied");
+    public void setClientRtcpAddress(InetSocketAddress address){
+        this.clientRtcpAddress = address;
     }
+
+    public void setSsrc(int ssrc){
+        this.rtpSession.setSsrc(ssrc);
+    }
+
+    public void destory(){
+        this.rtpSession.destory();
+    }
+
 }
